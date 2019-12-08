@@ -1,0 +1,52 @@
+1). List all the players in IPL.
+SELECT * FROM players
+
+2). Individual Player Statistics
+SELECT * FROM Players WHERE player_name='{player}'  --comment player is a variable name
+
+3). List the players who have scored Centuries in a match in IPL history.
+SELECT DISTINCT player_name,count(sum) FROM (SELECT match_id,striker,sum(batsman_score) FROM ball_by_ball GROUP BY match_id,striker
+HAVING sum(batsman_score)>=100 )as c JOIN players ON striker=player_id GROUP BY player_name;
+
+4). List the players who have taken 5-wicket hauls in IPL history
+SELECT player_name,COUNT(COUNT) AS five_wicket_hauls FROM players JOIN 
+(SELECT match_id,bowler,COUNT(dismissal_type) FROM ball_by_ball 
+WHERE dismissal_type!='run out' AND dismissal_type!=' ' AND dismissal_type!='retired hurt' 
+GROUP BY match_id,bowler HAVING COUNT(dismissal_type)=5) AS r 
+ON bowler=player_id GROUP BY player_name;
+
+5). Individual Team Statistics
+select team_id,team_name,team_code,count from teams join (select wining_team_id,count(wining_team_id) from match where wining_team_id is not NULL group by wining_team_id) as r on team_id=wining_team_id where team_name='{team}'; --comment team is a variable
+
+6). Players of that Team in a given season
+select distinct h.player_id,player_name,teams.team_name from has_played as h join match as m on h.match_id=m.match_id join teams on h.team_id=teams.team_id join players on h.player_id=players.player_id where season_id='{season}' and teams.team_id={teamid}; --comment season and teamid are variables.
+
+7). Individual Match Statistics
+select team_Id_1,team_Id_2,Match_Date,Venue_Name,Is_Result,Is_superover,Team1_Score,Team2_score,Team_1_wickets,Team_2_Wickets,Win_Type,Won_by,Wining_Team_Id from match where (team_id_1={team_id_1} and team_id_2={team_id_2}) or (team_id_1={team_id_2} and team_id_2={team_id_1}); -- team_id_1 and team_id_2 are variables
+
+8). Individual Season Statistics
+select seasons.season_id,season_year,e.player_name as orange_cap,f.player_name as purple_cap,g.player_name as man_of_the_tournament,team_name as winning_team from seasons join match on match.season_id=seasons.season_id join teams on team_id=wining_team_id join players as e on e.player_id=orange_cap join players as f on f.player_id=purple_cap join players as g on g.player_id=man_of_the_series where seasons.season_id={season} order by match_id DESC limit 1; -- season is a variable
+
+9). Given a venue what is better chasing or defending
+select venues.venue_name,count(wining_team_id) from venues join match on venues.venue_name=match.venue_name where venues.venue_name='{venue}' and (toss_won_by=wining_team_id and toss_descision='bat') group by venues.venue_name; 
+
+select venues.venue_name,count(wining_team_id) from venues join match on venues.venue_name=match.venue_name where venues.venue_name='{venue}' and (toss_won_by=wining_team_id and toss_descision='field') group by venues.venue_name;
+
+-- comment Use both the values for comparing
+
+10). Total how many match results were decided by superover through the course of IPL till 2016
+SELECT COUNT(match_id) FROM match WHERE is_superover='true'
+
+11). Name the venue and the city where the team that won the toss also won the match for max no. of times
+SELECT venues.venue_name,city.city_name FROM res1 JOIN venues ON res1.venue_name=venues.venue_name JOIN city on venues.city_id=city.city_id ORDER BY match_won DESC LIMIT 1;
+
+12). Name the Best Fielders in IPL history interms of number of catches caught
+select COUNT(fielder_id) AS tot,player_name FROM ball_by_ball JOIN players ON fielder_id=player_id WHERE dismissal_type='caught' GROUP BY player_name ORDER BY tot DESC LIMIT 5;
+
+13). Most runs scored by a batsman.
+select * from (select player_name,sum(batsman_score) as score from ball_by_ball as bb join players as p on bb.striker=p.player_id group by player_name) as r1 order by score DESC LIMIT 1;
+
+
+
+
+

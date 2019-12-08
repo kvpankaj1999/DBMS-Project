@@ -1,0 +1,147 @@
+CREATE OR REPLACE FUNCTION ball_by_ball()
+RETURNS TRIGGER AS $BODY$
+BEGIN
+IF(TG_OP='INSERT') THEN
+	UPDATE players SET score=score+NEW.batsman_score WHERE player_id=NEW.striker;
+	IF(NEW.dismissal_type!=' ' AND NEW.dismissal_type!='retired hurt' AND NEW.dismissal_type!='run out') THEN
+		UPDATE players SET wickets=wickets+1 WHERE player_id=NEW.bowler;
+	END IF;
+	IF(NEW.dismissal_type='caught') THEN
+		UPDATE players SET catches=catches+1 WHERE player_id=NEW.fielder_id;
+	END IF;
+ELSIF(TG_OP='UPDATE') THEN
+	UPDATE players SET score=score+NEW.batsman_score-OLD.batsman_score WHERE player_id=NEW.striker;
+	IF(NEW.dismissal_type!=' ' AND NEW.dismissal_type!='retired hurt' AND NEW.dismissal_type!='run out' ) THEN
+		IF(OLD.dismissal_type=' ' OR OLD.dismissal_type='retired hurt' OR OLD.dismissal_type='run out') THEN
+			UPDATE players SET wickets=wicket+1 WHERE player_id=NEW.bowler;
+		END IF; 
+	END IF;
+	IF(NEW.dismissal_type='caught') THEN
+		IF(OLD.dismissal_type!='caught') THEN
+			UPDATE players SET catches=catches+1 WHERE player_id=NEW.fielder_id;
+		END IF;
+	END IF;
+ELSIF(TG_OP='DELETE') THEN
+	UPDATE players SET score=score-OLD.batsman_score WHERE player_id=OLD.striker;
+	IF(OLD.dismissal_type!=' ' AND OLD.dismissal_type!='retired hurt' AND OLD.dismissal_type!='run out') THEN
+		UPDATE players SET wickets=wickets-1 WHERE player_id=OLD.striker;
+	END IF;
+	IF(OLD.dismissal_type='caught') THEN
+		UPDATE players SET catches=catches-1 WHERE player_id=NEW.fielder_id;
+	END IF;
+END IF;
+RETURN NULL;
+END;
+$BODY$ LANGUAGE plpgsql;
+CREATE TRIGGER BBB_event
+	AFTER INSERT OR UPDATE OR DELETE ON ball_by_ball
+		FOR EACH ROW EXECUTE PROCEDURE ball_by_ball();
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION compute_score()
+ 	RETURNs TRIGGER AS $BODY$
+DECLARE 
+ 	r match%rowtype;
+ BEGIN  
+ 	IF(TG_OP='INSERT') THEN
+	 	SELECT * FROM match INTO r WHERE match_id=NEW.match_id;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and NEW.innings_id=1 THEN
+ 			UPDATE match set team1_score=team1_score+NEW.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and NEW.innings_id=2 THEN
+ 			UPDATE match set team1_score=team1_score+NEW.batsman_score where match_id=r.match_id;
+ 		END IF;
+		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and NEW.innings_id=2 THEN
+ 			UPDATE match set team2_score=team2_score+NEW.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and NEW.innings_id=1 THEN
+ 			UPDATE match set team2_score=team2_score+NEW.batsman_score where match_id=r.match_id;
+ 		END IF;
+	END IF;
+	IF(TG_OP='UPDATE') THEN
+		SELECT * FROM match INTO r WHERE match_id=NEW.match_id;
+		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and NEW.innings_id=1 THEN
+ 			UPDATE match set team1_score=team1_score+NEW.batsman_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and NEW.innings_id=2 THEN
+ 			UPDATE match set team1_score=team1_score+NEW.batsman_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and NEW.innings_id=2 THEN
+ 			UPDATE match set team2_score=team2_score+NEW.batsman_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and NEW.innings_id=1 THEN
+ 			UPDATE match set team2_score=team2_score+NEW.batsman_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+	END IF;
+	IF(TG_OP='DELETE') THEN
+		SELECT * FROM match INTO r WHERE match_id=OLD.match_id;
+		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and OLD.innings_id=1 THEN
+ 			UPDATE match set team1_score=team1_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat'))  and OLD.innings_id=2 THEN
+ 			UPDATE match set team1_score=team1_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and OLD.innings_id=2 THEN
+ 			UPDATE match set team2_score=team2_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and OLD.innings_id=1 THEN
+ 			UPDATE match set team2_score=team2_score-OLD.batsman_score where match_id=r.match_id;
+ 		END IF;
+	END IF;
+ 	RETURN NULL;
+ END 
+ END $BODY$ LANGUAGE 'plpgsql';
+ CREATE TRIGGER cs_event
+	AFTER INSERT OR UPDATE OR DELETE ON ball_by_ball
+		FOR EACH ROW EXECUTE PROCEDURE compute_score();
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION compute_standings()
+ 	RETURNs TRIGGER AS $BODY$
+ DECLARE
+ 	s1 REAL;
+ 	s2 REAL;
+	x REAL;
+	y INT;
+	r current_standings%rowtype;
+ BEGIN
+ 	IF(TG_OP='UPDATE' AND (NEW.is_result is NOT NULL)) THEN
+ 		IF(NEW.is_result) THEN
+ 			UPDATE current_standings SET points=points+2 WHERE team_id=NEW.wining_team_id AND season_id=NEW.season_id;
+ 			UPDATE current_standings SET won_matches=won_matches++1 WHERE team_id=NEW.wining_team_id AND season_id=NEW.season_id;
+ 		END IF;
+ 		IF(NOT NEW.is_result) THEN
+ 			UPDATE current_standings SET points=points+1 WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+ 			UPDATE current_standings SET points=points+1 WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+ 		END IF;
+ 		UPDATE current_standings SET matches_played=matches_played+1 WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+ 		UPDATE current_standings SET matches_played=matches_played+1 WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+ 		SELECT ((sum(batsman_score)+sum(extra_runs))*1.0)/count(*) FROM ball_by_ball INTO s1 WHERE match_id=NEW.match_id AND ball_by_ball.innings_id=1;
+ 		SELECT ((sum(batsman_score)+sum(extra_runs))*1.0)/count(*) FROM ball_by_ball INTO s2 WHERE match_id=NEW.match_id AND ball_by_ball.innings_id=2;
+ 		IF ((NEW.toss_won_by=NEW.team_id_1 and NEW.toss_descision='bat') OR (NEW.toss_won_by=NEW.team_id_2 and NEW.toss_descision='field')) THEN
+ 			SELECT nrr FROM current_standings INTO x WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+			UPDATE current_standings SET nrr=x+s1-s2 WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+ 		END IF;
+ 		IF ((NEW.toss_won_by=NEW.team_id_1 and NEW.toss_descision='field') OR (NEW.toss_won_by=NEW.team_id_2 and NEW.toss_descision='bat')) THEN
+			SELECT nrr FROM current_standings INTO x WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+ 			UPDATE current_standings SET nrr=x+s1-s2 WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+ 		END IF;
+ 		IF ((NEW.toss_won_by=NEW.team_id_1 and NEW.toss_descision='bat') OR (NEW.toss_won_by=NEW.team_id_2 and NEW.toss_descision='field')) THEN
+			SELECT nrr FROM current_standings INTO x WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+			UPDATE current_standings SET nrr=x+s2-s1 WHERE team_id=NEW.team_id_2 AND season_id=NEW.season_id;
+ 		END IF;
+ 		IF ((NEW.toss_won_by=NEW.team_id_2 and NEW.toss_descision='bat') OR (NEW.toss_won_by=NEW.team_id_1 and NEW.toss_descision='field')) THEN
+			SELECT nrr FROM current_standings INTO x WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+ 			UPDATE current_standings SET nrr=x+s2-s1 WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+ 		END IF;
+		SELECT count(*) FROM current_standings INTO y WHERE season_id=NEW.season_id;
+		FOR r in SELECT * FROM current_standings WHERE season_id=NEW.season_id ORDER BY points,nrr ASC LOOP
+			UPDATE current_standings SET place=y WHERE team_id=NEW.team_id_1 AND season_id=NEW.season_id;
+			y=y-1;
+		END LOOP;
+ 	END IF;
+ 	RETURN NULL;
+ END $BODY$ LANGUAGE 'plpgsql';
+ CREATE TRIGGER match_event
+	AFTER INSERT OR UPDATE OR DELETE ON match
+		FOR EACH ROW EXECUTE PROCEDURE compute_standings();

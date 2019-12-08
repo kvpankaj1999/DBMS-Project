@@ -1,0 +1,61 @@
+CREATE OR REPLACE FUNCTION compute_score_team1()
+ 	RETURNs REAL AS $BODY$
+ DECLARE 
+ 	r score%rowtype;
+ BEGIN
+ 	FOR r IN SELECT * from score LOOP
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and r.innings_id=1 THEN
+ 			UPDATE match set team1_score=r.sum where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and r.innings_id=2 THEN
+ 			UPDATE match set team1_score=r.sum where match_id=r.match_id;
+ 		END IF;
+ 	END LOOP;
+ 	RETURN 0;
+ END $BODY$ LANGUAGE 'plpgsql';
+ CREATE OR REPLACE FUNCTION compute_score_team2()
+ 	RETURNs REAL AS $BODY$
+ DECLARE 
+ 	r score%rowtype;
+ BEGIN
+ 	FOR r IN SELECT * from score LOOP
+ 		IF ((r.toss_won_by=r.team_id_2 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_1 and r.toss_descision='field')) and r.innings_id=1 THEN
+ 			UPDATE match set team2_score=r.sum where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_2 and r.toss_descision='field') or (r.toss_won_by=r.team_id_1 and r.toss_descision='bat')) and r.innings_id=2 THEN
+ 			UPDATE match set team2_score=r.sum where match_id=r.match_id;
+ 		END IF;
+ 	END LOOP;
+ 	RETURN 0;
+ END $BODY$ LANGUAGE 'plpgsql';
+
+  CREATE OR REPLACE FUNCTION compute_wicket_team1()
+  	RETURNs REAL AS $BODY$
+  DECLARE 
+  	r wicket%rowtype;
+  BEGIN
+  	FOR r IN SELECT * from wicket LOOP
+  		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_2 and r.toss_descision='field')) and r.innings_id=1 THEN
+  			UPDATE match set team_1_wickets=r.wk where match_id=r.match_id;
+  		END IF;
+  		IF ((r.toss_won_by=r.team_id_1 and r.toss_descision='field') or (r.toss_won_by=r.team_id_2 and r.toss_descision='bat')) and r.innings_id=2 THEN
+  			UPDATE match set team_1_wickets=r.wk where match_id=r.match_id;
+  		END IF;
+  	END LOOP;
+  	RETURN 0;
+  END $BODY$ LANGUAGE 'plpgsql';
+ CREATE OR REPLACE FUNCTION compute_wicket_team2()
+ 	RETURNs REAL AS $BODY$
+ DECLARE 
+ 	r wicket%rowtype;
+ BEGIN
+ 	FOR r IN SELECT * from wicket LOOP
+ 		IF ((r.toss_won_by=r.team_id_2 and r.toss_descision='bat') or (r.toss_won_by=r.team_id_1 and r.toss_descision='field')) and r.innings_id=1 THEN
+ 			UPDATE match set team_2_wickets=r.wk where match_id=r.match_id;
+ 		END IF;
+ 		IF ((r.toss_won_by=r.team_id_2 and r.toss_descision='field') or (r.toss_won_by=r.team_id_1 and r.toss_descision='bat')) and r.innings_id=2 THEN
+ 			UPDATE match set team_2_wickets=r.wk where match_id=r.match_id;
+ 		END IF;
+ 	END LOOP;
+ 	RETURN 0;
+ END $BODY$ LANGUAGE 'plpgsql'
